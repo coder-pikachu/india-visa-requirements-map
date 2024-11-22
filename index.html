@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overscroll-behavior: none;
+    }
+    .container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      background: #f8fafc;
+    }
+    .header {
+      padding: 1rem;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    .title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-align: center;
+      margin: 0 0 0.5rem 0;
+      color: #1e293b;
+    }
+    .search-container {
+      padding: 0.5rem 1rem;
+      background: white;
+    }
+    .search-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      background: #f8fafc;
+      -webkit-appearance: none;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.1);
+    }
+    #map-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    .country {
+      transition: fill 0.2s ease;
+    }
+    .country:hover, .country:active {
+      stroke: #000;
+      stroke-width: 1px;
+    }
+    .country.highlight {
+      stroke: #000;
+      stroke-width: 2px;
+    }
+    .tooltip {
+      position: absolute;
+      background: white;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      pointer-events: none;
+      font-size: 0.875rem;
+      z-index: 20;
+      max-width: 200px;
+    }
+    .tooltip-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #1e293b;
+    }
+    .tooltip-content {
+      color: #64748b;
+    }
+    .legend {
+      padding: 1rem;
+      background: white;
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
+    }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+      justify-items: start;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .legend-text {
+      font-size: 0.875rem;
+      color: #475569;
+    }
+    @media (max-width: 640px) {
+      .title {
+        font-size: 1.25rem;
+      }
+      .legend-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .tooltip {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1 class="title">Visa Requirements for Indian Citizens</h1>
+    <div class="search-container">
+      <input type="text" id="search"
+             class="search-input"
+             placeholder="Search for a country..."
+             autocomplete="off"
+             spellcheck="false">
+    </div>
+  </div>
+
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-grid">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #16A34A"></div>
+        <div class="legend-text">Visa not required</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #DC2626"></div>
+        <div class="legend-text">Visa required</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #F59E0B"></div>
+        <div class="legend-text">eVisa</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #2563EB"></div>
+        <div class="legend-text">Visa on arrival</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #7C3AED"></div>
+        <div class="legend-text">Visa on arrival or eVisa</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #6B7280"></div>
+        <div class="legend-text">Freedom of movement</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip" class="tooltip" style="display: none;"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Prevent default touch behaviors
+  document.addEventListener('touchstart', function(e) {
+    if (e.target.closest('#map')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e) {
+    if (e.target.closest('#map')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  const svg = d3.select("#map").append("svg")
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("viewBox", [0, 0, 960, 500])
+    .attr("preserveAspectRatio", "xMidYMid meet");
+
+  const tooltip = d3.select('#tooltip');
+  let touch = false;
+
+  const showTooltip = (event, d) => {
+    const bounds = document.querySelector('#map-container').getBoundingClientRect();
+    const [x, y] = touch ?
+      [event.touches[0].clientX - bounds.left, event.touches[0].clientY - bounds.top] :
+      [event.clientX - bounds.left, event.clientY - bounds.top];
+
+    tooltip.style('display', 'block')
+      .html(`
+        <div class="tooltip-title">${d.properties.name}</div>
+        <div class="tooltip-content">${d.visa}</div>
+      `);
+
+    const tooltipBounds = tooltip.node().getBoundingClientRect();
+    const maxX = bounds.width - tooltipBounds.width - 10;
+    const maxY = bounds.height - tooltipBounds.height - 10;
+
+    tooltip.style('left', `${Math.min(maxX, Math.max(10, x + 10))}px`)
+           .style('top', `${Math.min(maxY, Math.max(10, y + 10))}px`);
+  };
+
+  const hideTooltip = () => {
+    tooltip.style('display', 'none');
+  };
+
+  // Enhanced zoom behavior
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .on("zoom", ({transform}) => {
+      svg.selectAll("path").attr("transform", transform);
+    });
+
+  const projection = d3.geoMercator()
+    .scale(120)
+    .translate([480, 250])
+    .center([0, 20]);
+
+  const path = d3.geoPath().projection(projection);
+
+  svg.call(zoom);
+
+  // Debounce search function
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  // Load and render map
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+    .then(world => {
+      const countries = topojson.feature(world, world.objects.countries);
+
+      // Assign visa requirements (random for demo)
+      countries.features.forEach(d => {
+        d.visa = Math.random() < 1/6 ? "Visa not required" :
+                 Math.random() < 2/6 ? "Visa required" :
+                 Math.random() < 3/6 ? "eVisa" :
+                 Math.random() < 4/6 ? "Visa on arrival" :
+                 Math.random() < 5/6 ? "Visa on arrival or eVisa" :
+                 "Freedom of movement";
+      });
+
+      const colorScale = d3.scaleOrdinal()
+        .domain(["Visa not required", "Visa required", "eVisa",
+                "Visa on arrival", "Visa on arrival or eVisa", "Freedom of movement"])
+        .range(["#16A34A", "#DC2626", "#F59E0B", "#2563EB", "#7C3AED", "#6B7280"]);
+
+      svg.append("g")
+        .selectAll("path")
+        .data(countries.features)
+        .join("path")
+          .attr("class", "country")
+          .attr("fill", d => colorScale(d.visa))
+          .attr("d", path)
+          .on('mousemove', (e, d) => {
+            touch = false;
+            showTooltip(e, d);
+          })
+          .on('touchstart', (e, d) => {
+            touch = true;
+            showTooltip(e, d);
+          })
+          .on('mouseout', hideTooltip)
+          .on('touchend', hideTooltip)
+          .on('click', (e, d) => {
+            svg.selectAll(".country").classed("highlight", false);
+            d3.select(e.target).classed("highlight", true);
+          });
+
+      // Enhanced search functionality
+      const searchInput = d3.select("#search");
+      const debouncedSearch = debounce((searchTerm) => {
+        svg.selectAll(".country")
+          .classed("highlight", d => {
+            const name = d.properties.name.toLowerCase();
+            return name.includes(searchTerm.toLowerCase());
+          });
+      }, 300);
+
+      searchInput.on("input", function() {
+        debouncedSearch(this.value);
+      });
+
+      // Reset highlights when search is cleared
+      searchInput.on("search", function() {
+        if (!this.value) {
+          svg.selectAll(".country").classed("highlight", false);
+        }
+      });
+    });
+});
+</script>
+</body>
+</html>
