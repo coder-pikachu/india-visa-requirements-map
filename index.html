@@ -6,9 +6,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body, html { 
-      height: 100%; 
-      margin: 0; 
+    body, html {
+      height: 100%;
+      margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overscroll-behavior: none;
@@ -16,9 +16,9 @@
       position: fixed;
       width: 100%;
     }
-    .container { 
-      height: 100%; 
-      display: flex; 
+    .container {
+      height: 100%;
+      display: flex;
       flex-direction: column;
       max-width: 100%;
       position: relative;
@@ -55,22 +55,22 @@
       border-color: #60a5fa;
       box-shadow: 0 0 0 3px rgba(96,165,250,0.1);
     }
-    #map-container { 
+    #map-container {
       flex: 1;
       position: relative;
       overflow: hidden;
       touch-action: none;
       -webkit-overflow-scrolling: touch;
     }
-    #map { 
+    #map {
       width: 100%;
       height: 100%;
       touch-action: none;
     }
-    .country { 
+    .country {
       transition: fill 0.2s ease;
     }
-    .country:hover, .country:active { 
+    .country:hover, .country:active {
       stroke: #000;
       stroke-width: 1px;
     }
@@ -154,7 +154,7 @@
   <div class="header">
     <h1 class="title">Visa Requirements for Indian Citizens</h1>
     <div class="search-container">
-      <input type="text" id="search" 
+      <input type="text" id="search"
              class="search-input"
              placeholder="Search for a country..."
              autocomplete="off"
@@ -216,15 +216,15 @@ document.addEventListener('DOMContentLoaded', function() {
   const svg = d3.select("#map").append("svg")
     .attr("width", "100%")
     .attr("height", "100%")
-    .attr("viewBox", [0, 0, 960, 500])
-    .attr("preserveAspectRatio", "xMidYMid meet");
+    .attr("viewBox", [-100, 0, 1160, 500])
+    .attr("preserveAspectRatio", "xMinYMid meet")
 
   const tooltip = d3.select('#tooltip');
   let touch = false;
 
   const showTooltip = (event, d) => {
     const bounds = document.querySelector('#map-container').getBoundingClientRect();
-    const [x, y] = touch ? 
+    const [x, y] = touch ?
       [event.touches[0].clientX - bounds.left, event.touches[0].clientY - bounds.top] :
       [event.clientX - bounds.left, event.clientY - bounds.top];
 
@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
 
       const colorScale = d3.scaleOrdinal()
-        .domain(["Visa not required", "Visa required", "eVisa", 
+        .domain(["Visa not required", "Visa required", "eVisa",
                 "Visa on arrival", "Visa on arrival or eVisa", "Freedom of movement"])
         .range(["#16A34A", "#DC2626", "#F59E0B", "#2563EB", "#7C3AED", "#6B7280"]);
 
